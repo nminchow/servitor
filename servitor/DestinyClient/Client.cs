@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace servitor.DestinyClient
 {
-    public class Client
+    public partial class Client
     {
         static HttpClient httpClient = new HttpClient();
 
@@ -23,7 +23,7 @@ namespace servitor.DestinyClient
             httpClient.DefaultRequestHeaders.Add("X-API-Key", config["bungieApiKey"]);
         }
 
-        private async Task<HttpResponseMessage> QueryApi(string path, string term)
+        private async Task<HttpResponseMessage> QueryApi(string path, string term = "")
         {
             return await httpClient.GetAsync(path + WebUtility.UrlEncode(term));
         }
@@ -36,6 +36,29 @@ namespace servitor.DestinyClient
             return JObject.Parse(result);
         }
 
+        private async Task<MembershipData> SearchPlayer(string term, PlatformType type = PlatformType.Other)
+        {
+            // TODO: loop over results and do case sensitive displayName == searchTerm check
+            var queryType = platformLookup[type];
+            HttpResponseMessage response = await QueryApi(String.Format("Destiny2/SearchDestinyPlayer/{0}/", queryType), term);
+            var result = response.Content.ReadAsStringAsync().Result;
+            var responseObject = JObject.Parse(result);
+
+            return new MembershipData(
+                (string)responseObject["Response"][0]["membershipType"],
+                (string)responseObject["Response"][0]["membershipId"]);
+        }
+
+        private async Task<JObject> GetPlayerDetails(MembershipData player)
+        {
+            // TODO: loop over results and check for last played character
+            var queryType = platformLookup[player.MembershipType];
+            HttpResponseMessage response = await QueryApi(String.Format("Destiny2/{0}/Profile/{1}{2}", queryType, player.MembershipId, "?components=200"));
+            var result = response.Content.ReadAsStringAsync().Result;
+            var responseObject = JObject.Parse(result);
+            return responseObject;
+        }
+
         public async Task<string> SearchPvpData(string term)
         {
             var searchResult = await SearchBungieUsers(term);
@@ -45,16 +68,20 @@ namespace servitor.DestinyClient
                 case 0:
                     return "User not found.";
                 case 1:
-                    return await SquadPvpView(DisplayNameFromResult(searchResult["Response"][0]));
+                    // only one user found, cut right to pvp breakdown
+                    //return await SquadPvpView(SearchResultFromResult(searchResult["Response"][0]));
+                    var result = new SearchResult(searchResult["Response"][0]);
+                    var player = SearchPlayer(result.identifier, result.type);
+                    return "bleh";
                 default:
                     {
-                        return "candidates: " + String.Join(String.Empty, searchResult["Response"].Select(c => DisplayNameFromResult(c)).ToList());
+                        return "candidates: " + String.Join(String.Empty, searchResult["Response"].Select(c => SearchResultFromResult(c)).ToList());
                     }
 
             }
         }
 
-        private string DisplayNameFromResult(JToken result)
+        private string SearchResultFromResult(JToken result)
         {
             return (string)(result["blizzardDisplayName"] ?? result["xboxDisplayName"] ?? result["psnDisplayName"]);
         }
@@ -62,32 +89,11 @@ namespace servitor.DestinyClient
         public async Task<string> SquadPvpView(string displayName)
         {
             var p = await SearchPlayer(displayName);
-            return p.MembershipId;
+            var player = await GetPlayerDetails(p);
+            return "done";
         }
 
-        private async Task<MembershipData> SearchPlayer(string term)
-        {
-            // TODO: loop over results and do case sensitive displayName == searchTerm check
-            HttpResponseMessage response = await QueryApi("User/SearchUsers/?q=", term);
-            var result = response.Content.ReadAsStringAsync().Result;
-            var responseObject = JObject.Parse(result);
+ 
 
-            return new MembershipData(
-                (string)responseObject["Response"][0]["membershipType"],
-                (string)responseObject["Response"][0]["membershipId"]);
-        }
-
-    }
-
-    class MembershipData
-    {
-        public string MembershipType { get; set; }
-        public string MembershipId { get; set; }
-
-        public MembershipData(string type, string id)
-        {
-            MembershipType = type;
-            MembershipId = id;
-        }
     }
 }
