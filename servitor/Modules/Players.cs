@@ -28,19 +28,19 @@ namespace servitor.Modules
         public async Task SearchPlayer([Remainder] [Summary("player name to query")] string name)
         {
             var result = await _client.SearchPvpData(name);
-            var results = new List<Embed>();
-            result.ForEach(p => AddIfNotNull(results, p.Result));
+            var results = new List<Task<IUserMessage>>();
+            result.ForEach(p => results.Add(SendEmbed(p)));
 
-            // ReplyAsync is a method on ModuleBase
-            results.ForEach(async p => await ReplyAsync(message: "", embed: p));
+
+            await Task.WhenAll(results);
         }
 
-        private void AddIfNotNull<T>(List<T> list, T item)
+        private async Task<IUserMessage> SendEmbed(Task<Embed> item)
         {
-            if( item != null)
-            {
-                list.Add(item);
-            }
+            var result = await item;
+            if (result != null)
+                return await ReplyAsync(message: "", embed: result);
+            return null;
         }
 
         // ~say hello -> hello
