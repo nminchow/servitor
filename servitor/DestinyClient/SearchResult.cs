@@ -4,14 +4,25 @@ using System.Linq;
 
 namespace servitor.DestinyClient
 {
-    public partial class Client
+    public class SearchResultWrapper
     {
+
+        // could use manifest for these
         public static Dictionary<PlatformType, string> platformLookup = new Dictionary<PlatformType, string>
         {
             {PlatformType.PC, "4"},
             {PlatformType.Xbox, "1"},
             {PlatformType.PSN, "2"},
             {PlatformType.Other, "-1"}
+        };
+
+        // could use manifest for these
+        public static Dictionary<PlatformType, string> platformNameLookup = new Dictionary<PlatformType, string>
+        {
+            {PlatformType.PC, "PC"},
+            {PlatformType.Xbox, "Xbox"},
+            {PlatformType.PSN, "PSN"},
+            {PlatformType.Other, "Other"}
         };
 
         public static Dictionary<string, PlatformType> reversePlatformLookup = platformLookup.ToDictionary(x => x.Value, x => x.Key);
@@ -29,21 +40,24 @@ namespace servitor.DestinyClient
             public string identifier;
             public PlatformType type;
 
-            public SearchResult(JToken queryResult)
+            public SearchResult(JToken queryResult, string term)
             {
-                if (queryResult["blizzardDisplayName"] != null)
+                var blizz = queryResult["blizzardDisplayName"];
+                var xbox = queryResult["xboxDisplayName"];
+                var psn = queryResult["psnDisplayName"];
+                if (Check(blizz, term))
                 {
-                    identifier = (string)queryResult["blizzardDisplayName"];
+                    identifier = (string)blizz;
                     type = PlatformType.PC;
                 }
-                else if (queryResult["xboxDisplayName"] != null)
+                else if (Check(xbox, term))
                 {
-                    identifier = (string)queryResult["xboxDisplayName"];
+                    identifier = (string)xbox;
                     type = PlatformType.Xbox;
                 }
-                else if (queryResult["psnDisplayName"] != null)
+                else if (Check(psn, term))
                 {
-                    identifier = (string)queryResult["psnDisplayName"];
+                    identifier = (string)psn;
                     type = PlatformType.PSN;
                 }
                 else
@@ -51,6 +65,11 @@ namespace servitor.DestinyClient
                     identifier = "";
                     type = PlatformType.Other;
                 }
+            }
+
+            private static bool Check(JToken result, string term)
+            {
+                return result != null && result.ToString().ToLower().Contains(term.ToLower());
             }
 
             public SearchResult(string platform, string id)

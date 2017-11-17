@@ -1,4 +1,5 @@
-﻿using Discord.Commands;
+﻿using Discord;
+using Discord.Commands;
 using Discord.WebSocket;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -11,35 +12,46 @@ using System.Threading.Tasks;
 namespace servitor.Modules
 {
     // Create a module with no prefix
-    public class Info : ModuleBase<SocketCommandContext>
+    [Group("serv")]
+    public class Players : ModuleBase<SocketCommandContext>
     {
         private DestinyClient.Client _client;
 
-        public Info(DestinyClient.Client client)
+        public Players(DestinyClient.Client client)
         {
             _client = client;
         }
 
         // ~say hello -> hello
-        [Command("s")]
+        [Command("s", RunMode = RunMode.Async)]
         [Summary("Echos a message.")]
         public async Task SearchPlayer([Remainder] [Summary("player name to query")] string name)
         {
-            string result = await _client.SearchPvpData(name);
+            var result = await _client.SearchPvpData(name);
+            var results = new List<Embed>();
+            result.ForEach(p => AddIfNotNull(results, p.Result));
 
             // ReplyAsync is a method on ModuleBase
-            await ReplyAsync(result);
+            results.ForEach(async p => await ReplyAsync(message: "", embed: p));
+        }
+
+        private void AddIfNotNull<T>(List<T> list, T item)
+        {
+            if( item != null)
+            {
+                list.Add(item);
+            }
         }
 
         // ~say hello -> hello
-        [Command("se")]
+        [Command("l")]
         [Summary("Echos a message.")]
-        public async Task SearchPvpView([Remainder] [Summary("display name to look for")] string name)
+        public async Task LookupPvpView([Summary("display name to look for")] string name, string platform)
         {
-            string result = await _client.SquadPvpView(name);
+            Embed result = await _client.SquadPvpView(name, platform);
 
             // ReplyAsync is a method on ModuleBase
-            await ReplyAsync(result);
+            await ReplyAsync(message: "" , embed: result);
         }
     }
 
