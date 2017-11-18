@@ -29,7 +29,10 @@ namespace servitor.Modules
         {
             var result = await _client.SearchPvpData(name);
             var results = new List<Task<IUserMessage>>();
-            result.ForEach(p => results.Add(SendEmbed(p)));
+            foreach (var item in result)
+            {
+                results.Add(SendEmbed(item));
+            } 
 
 
             await Task.WhenAll(results);

@@ -16,6 +16,8 @@ namespace servitor.DestinyClient
             {PlatformType.Other, "-1"}
         };
 
+        public static Dictionary<string, PlatformType> reversePlatformLookup = platformLookup.ToDictionary(x => x.Value, x => x.Key);
+
         // could use manifest for these
         public static Dictionary<PlatformType, string> platformNameLookup = new Dictionary<PlatformType, string>
         {
@@ -25,7 +27,9 @@ namespace servitor.DestinyClient
             {PlatformType.Other, "Other"}
         };
 
-        public static Dictionary<string, PlatformType> reversePlatformLookup = platformLookup.ToDictionary(x => x.Value, x => x.Key);
+        public static Dictionary<string, PlatformType> reversePlatformNameLookup = platformNameLookup.ToDictionary(x => x.Value, x => x.Key);
+
+
 
         public enum PlatformType
         {
