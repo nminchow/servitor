@@ -2,7 +2,7 @@
 
 namespace servitor.DestinyClient
 {
-    struct MembershipData
+    public struct MembershipData
     {
         public PlatformType MembershipType { get; set; }
         public string MembershipId { get; set; }

@@ -18,7 +18,7 @@ namespace destiny2_group_bot
         private CommandService _commands;
         private DiscordSocketClient _client;
         private IServiceProvider _services;
-        static servitor.DestinyClient.Client destinyClient;
+        static servitor.DestinyClient.ApiWrapper destinyApi;
 
         public static void Main(string[] args)
             => new Program().MainAsync().GetAwaiter().GetResult();
@@ -34,7 +34,8 @@ namespace destiny2_group_bot
             IConfiguration configuration = builder.Build();
 
             // setup destiny client
-            destinyClient = new servitor.DestinyClient.Client(configuration);
+            var destinyClient = new servitor.DestinyClient.Client(configuration);
+            destinyApi = new servitor.DestinyClient.ApiWrapper(destinyClient);
 
             _client = new DiscordSocketClient();
             _client.Log += Log;
@@ -46,7 +47,7 @@ namespace destiny2_group_bot
             _services = new ServiceCollection()
                 .AddSingleton(_client)
                 .AddSingleton(_commands)
-                .AddSingleton(destinyClient)
+                .AddSingleton(destinyApi)
                 .BuildServiceProvider();
 
             await InstallCommandsAsync();

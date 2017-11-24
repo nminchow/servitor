@@ -9,29 +9,22 @@ using static servitor.DestinyClient.SearchResultWrapper;
 
 namespace servitor.Views
 {
-    class PlayerView
+    partial class ViewBuilder
     {
-        JObject Player;
-        string DisplayName;
-
-        public PlayerView(JObject p, string dn)
-        {
-            Player = p;
-            DisplayName = dn;
-        }
-
-        public Embed Render()
+        public Embed PlayerView(JObject player, string displayName)
         {
             var author = new EmbedAuthorBuilder();
-            author.IconUrl = ViewHelpers.AsUrl((string)Player["emblemPath"]);
-            var platform = reversePlatformLookup[(string)Player["membershipType"]];
-            author.Name = String.Format("{0} {1}", DisplayName, platformNameLookup[platform]);
+            author.IconUrl = ViewHelpers.AsUrl((string)player["emblemPath"]);
+            var platform = reversePlatformLookup[(string)player["membershipType"]];
+            //author.Name = String.Format("{0} {1}", platformNameLookup[platform], displayName);
+            author.Name = displayName;
 
             EmbedBuilder embed = new EmbedBuilder();
-            embed.ThumbnailUrl = ViewHelpers.AsUrl((string)Player["emblemPath"]);
+            embed.ThumbnailUrl = ViewHelpers.AsUrl((string)player["emblemPath"]);
             embed.Author = author;
-            embed.AddInlineField("Light", Player["light"]);
-            embed.AddInlineField("Class", Player["classHash"]);
+            embed.AddInlineField("Light", player["light"]);
+            var className = Manifest["DestinyClassDefinition"][(string)player["classHash"]]["displayProperties"]["name"];
+            embed.AddInlineField("Class", className);
             return embed.Build();
         }
     }

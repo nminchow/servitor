@@ -3,19 +3,21 @@ using Newtonsoft.Json.Linq;
 using servitor.Views;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Text;
 using System.Threading.Tasks;
 using static servitor.DestinyClient.SearchResultWrapper;
 
 namespace servitor.DestinyClient
 {
-    public partial class Client
+    public class Client
     {
         static HttpClient httpClient = new HttpClient();
+
+        static ViewBuilder viewBuilder;
 
         public static string BungieRootPath = "https://www.bungie.net";
 
@@ -25,14 +27,18 @@ namespace servitor.DestinyClient
             httpClient.DefaultRequestHeaders.Accept.Clear();
             httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             httpClient.DefaultRequestHeaders.Add("X-API-Key", config["bungieApiKey"]);
+
+            var text = File.ReadAllText(@"manifest.json");
+
+            viewBuilder = new ViewBuilder(JObject.Parse(text));
         }
 
         private async Task<HttpResponseMessage> QueryApi(string path, string term = "")
         {
-            return await httpClient.GetAsync(path + WebUtility.UrlEncode(term));
+            return await httpClient.GetAsync(path + Uri.EscapeUriString(term));
         }
 
-        private async Task<JObject> SearchBungieUsers(string term)
+        public async Task<JObject> SearchBungieUsers(string term)
         {
             Console.WriteLine("Searching bungie users");
             HttpResponseMessage response = await QueryApi("User/SearchUsers/?q=", term);
@@ -41,7 +47,7 @@ namespace servitor.DestinyClient
             return JObject.Parse(result);
         }
 
-        private async Task<IEnumerable<MembershipData>> SearchPlayer(string term, PlatformType type = PlatformType.Other)
+        public async Task<IEnumerable<MembershipData>> SearchPlayer(string term, PlatformType type = PlatformType.Other)
         {
             Console.WriteLine("SearchingPlayer: " + term);
             // TODO: loop over results and do case sensitive displayName == searchTerm check
@@ -60,10 +66,9 @@ namespace servitor.DestinyClient
                 );
         }
 
-        private async Task<Discord.Embed> GetPlayerDetails(MembershipData player)
+        public async Task<Discord.Embed> GetPlayerDetails(MembershipData player)
         {
             Console.WriteLine("getting player details: " + player.DisplayName);
-            // TODO: loop over results and check for last played character
             var queryType = platformLookup[player.MembershipType];
             HttpResponseMessage response = await QueryApi(String.Format("Destiny2/{0}/Profile/{1}{2}", queryType, player.MembershipId, "?components=200"));
             Console.WriteLine("done player details: " + player.DisplayName);
@@ -77,46 +82,12 @@ namespace servitor.DestinyClient
             }
  
             var data = (JObject)responseObject["Response"]["characters"]["data"];
-            var character = (JObject)data.Values<JToken>().FirstOrDefault().First();
+            var character = (JObject)data.Values<JToken>()
+                .Select(p => p.FirstOrDefault())
+                .OrderByDescending(p => DateTime.Parse((string)p["dateLastPlayed"])).First();
             Console.WriteLine("rendering view: " + player.DisplayName);
 
-            return new PlayerView(character, player.DisplayName).Render();
-
-        }
-
-        public async Task<IEnumerable<Task<Discord.Embed>>> SearchPvpData(string term)
-        {
-            var searchResult = await SearchBungieUsers(term);
-
-            switch (searchResult["Response"].Count())
-            {
-                case 0:
-                    // fix me
-                    throw new Exception();
-                default:
-                    {
-                        return searchResult["Response"]
-                            .Select(p => new SearchResult((JObject)p, term))
-                            .Where(p => p.type != PlatformType.Other)
-                            .OrderBy(p => p.identifier.Split('#').First().Length)
-                            .Take(10)
-                            .Select(async p => await SearchResultToView(p));
-                    }
-
-            }
-        }
-
-        public async Task<Discord.Embed> SquadPvpView(string displayName, string platform)
-        {
-            var type = reversePlatformNameLookup[platform];
-            var p = await SearchPlayer(displayName, type);
-            return await GetPlayerDetails(p.First());
-        }
-
-        private async Task<Discord.Embed> SearchResultToView(SearchResult result)
-        {
-            var items = await SearchPlayer(result.identifier, result.type);
-            return await GetPlayerDetails(items.First());
+            return viewBuilder.PlayerView(character, player.DisplayName);
         }
 
     }

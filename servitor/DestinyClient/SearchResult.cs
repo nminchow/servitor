@@ -27,7 +27,7 @@ namespace servitor.DestinyClient
             {PlatformType.Other, "Other"}
         };
 
-        public static Dictionary<string, PlatformType> reversePlatformNameLookup = platformNameLookup.ToDictionary(x => x.Value, x => x.Key);
+        public static Dictionary<string, PlatformType> reversePlatformNameLookup = platformNameLookup.ToDictionary(x => x.Value.ToLower(), x => x.Key);
 
 
 

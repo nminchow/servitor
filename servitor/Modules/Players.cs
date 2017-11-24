@@ -1,12 +1,8 @@
 ﻿using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
-using System.Net.Http;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace servitor.Modules
@@ -15,27 +11,28 @@ namespace servitor.Modules
     [Group("serv")]
     public class Players : ModuleBase<SocketCommandContext>
     {
-        private DestinyClient.Client _client;
+        private DestinyClient.ApiWrapper destinyApi;
 
-        public Players(DestinyClient.Client client)
+        public Players(DestinyClient.ApiWrapper api)
         {
-            _client = client;
+            destinyApi = api;
         }
 
         // ~say hello -> hello
         [Command("s", RunMode = RunMode.Async)]
         [Summary("Echos a message.")]
-        public async Task SearchPlayer([Remainder] [Summary("player name to query")] string name)
+        public async Task SearchPlayer([Summary("platform to search on")] string platform, [Remainder] [Summary("player name to query")] string name)
         {
-            var result = await _client.SearchPvpData(name);
+            var result = await destinyApi.SearchPvpData(name, platform);
             var results = new List<Task<IUserMessage>>();
+            results.Add(ReplyAsync("Searching..."));
             foreach (var item in result)
             {
                 results.Add(SendEmbed(item));
-            } 
-
+            }
 
             await Task.WhenAll(results);
+            await ReplyAsync("Search Complete.");
         }
 
         private async Task<IUserMessage> SendEmbed(Task<Embed> item)
@@ -49,9 +46,9 @@ namespace servitor.Modules
         // ~say hello -> hello
         [Command("l")]
         [Summary("Echos a message.")]
-        public async Task LookupPvpView([Summary("display name to look for")] string name, string platform)
+        public async Task LookupPvpView([Summary("platform to search on")] string platform, [Remainder] [Summary("display name to look for")] string name)
         {
-            Embed result = await _client.SquadPvpView(name, platform);
+            Embed result = await destinyApi.SquadPvpView(name, platform);
 
             // ReplyAsync is a method on ModuleBase
             await ReplyAsync(message: "" , embed: result);
